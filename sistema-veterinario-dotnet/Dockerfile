@@ -1,10 +1,15 @@
 # Estágio de Build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["SistemaVeterinario.API.csproj", "./"]
-RUN dotnet restore "SistemaVeterinario.API.csproj"
+
+# 1. Copia absolutamente todas as pastas do projeto (API, Domain, Infrastructure, etc)
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+
+# 2. Restaura as dependências apontando para dentro da subpasta da API
+RUN dotnet restore "SistemaVeterinario.API/SistemaVeterinario.API.csproj"
+
+# 3. Compila e publica o projeto apontando para a mesma subpasta
+RUN dotnet publish "SistemaVeterinario.API/SistemaVeterinario.API.csproj" -c Release -o /app/publish
 
 # Estágio de Runtime (Execução)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
