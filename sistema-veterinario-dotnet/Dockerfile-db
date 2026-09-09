@@ -1,0 +1,9 @@
+# Usa uma versão leve e rápida do Oracle Database
+FROM gvenzl/oracle-free:slim
+
+# Copia o seu arquivo oracle.sql para a pasta de inicialização.
+# O Oracle vai rodar esse script automaticamente na primeira vez que ligar!
+COPY oracle.sql /container-entrypoint-initdb.d/
+
+# Expõe a porta padrão do Oracle
+EXPOSE 1521

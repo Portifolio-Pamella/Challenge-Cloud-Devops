@@ -7,7 +7,7 @@ ORACLE_PASSWORD="200806"
 CONNECTIONSTRINGS='Data Source=oracle-dimdim:1521/XE;User Id=rm565206;Password=200806;'
 
 acrName="aegisrm$rm"
-keyVaultName="keyvault-aegis-$rm"
+keyVaultName="keyvault-$rm"
 
 az provider register --namespace Microsoft.KeyVault
 
