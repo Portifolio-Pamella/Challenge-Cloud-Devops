@@ -1,4 +1,4 @@
-# Sistema Veterinário - Aegis | DevOps Tools & Cloud Computing
+# Sistema Veterinário | DevOps Tools & Cloud Computing
 
 **Grupo:**
 
