@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="SistemaVeterinario.API/SistemaVeterinario.API.csproj" />
+  <Project Path="SistemaVeterinario.Application/SistemaVeterinario.Application.csproj" />
+  <Project Path="SistemaVeterinario.Domain/SistemaVeterinario.Domain.csproj" />
+  <Project Path="SistemaVeterinario.Infrastructure/SistemaVeterinario.Infrastructure.csproj" />
+  <Project Path="SistemaVeterinario.Tests.Integration/SistemaVeterinario.Tests.Integration.csproj" />
+  <Project Path="SistemaVeterinario.Tests.Unit/SistemaVeterinario.Tests.Unit.csproj" />
+</Solution>
