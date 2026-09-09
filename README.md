@@ -69,298 +69,158 @@ cd sistema-veterinario-dotnet
 
 ---
 
-## 5. Guia de Deploy e Execução na Nuvem (Passo a Passo)
+## Guia de Deploy e Execução na Nuvem (How To)
 
-### Passo 1: Criação da Infraestrutura da VM de Apoio / Gestão
+Este guia descreve os passos exatos para provisionar a infraestrutura e realizar o deploy da aplicação utilizando 100% dos recursos da Microsoft Azure, sem dependências locais.
 
-```bash
-#!/bin/bash
-RESOURCE_GROUP="rm565206-infra"
-VM_NAME="rm565206-deploy"
-LOCATION="canadacentral"
-IMAGE="almalinux:almalinux-x86_64:10-gen2:10.1.202512150"
-SIZE="Standard_B2ats_v2"
-USERNAME="admlnx"
-PASSWORD="Fiap@2tdsvms"
+### 1. Preparação do Ambiente (Azure Cloud Shell)
 
-az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
+Todo o processo de orquestração será feito a partir do Azure Cloud Shell para garantir um ambiente padronizado com o Azure CLI já autenticado.
 
-az vm create \
-    --resource-group "$RESOURCE_GROUP" \
-    --name "$VM_NAME" \
-    --location "$LOCATION" \
-    --image "$IMAGE" \
-    --size "$SIZE" \
-    --admin-username "$USERNAME" \
-    --admin-password "$PASSWORD" \
-    --vnet-name vnet-linux-free \
-    --vnet-address-prefix 10.0.0.0/16 \
-    --subnet subnet-linux-free \
-    --subnet-address-prefix 10.0.1.0/24 \
-    --nsg nsg-linux-free \
-    --nsg-rule SSH \
-    --public-ip-sku Standard \
-    --public-ip-address ip-linux-free \
-    --nic-delete-option Delete \
-    --os-disk-delete-option Delete \
-    --storage-sku Premium_LRS \
-    --os-disk-size-gb 64
-
-az network nsg rule create \
-    --resource-group "$RESOURCE_GROUP" \
-    --nsg-name nsg-linux-free \
-    --name Common_Ports \
-    --protocol tcp \
-    --priority 1111 \
-    --destination-port-ranges 80 8080 3000 5000 5001 \
-    --access allow \
-    --source-address-prefixes "*"
-
-```
-
-### Passo 2: Criação do Azure Container Registry (ACR)
+1. Acesse o **Portal da Azure** e faça login.
+2. Na barra superior de navegação, clique no ícone **`>_`** para abrir o **Cloud Shell**.
+3. Certifique-se de que o terminal está configurado para **Bash** (no canto superior esquerdo da janela do terminal).
+4. Clone este repositório para o ambiente do Cloud Shell e entre na pasta dos scripts:
 
 ```bash
-#!/bin/bash
-rm="565206"
-RESOURCE_GROUP="rg-aegis-app"
-LOCATION="canadacentral"
-ACR_NAME="aegisrm$rm"
-
-az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
-
-az acr create \
-    --resource-group "$RESOURCE_GROUP" \
-    --name "$ACR_NAME" \
-    --sku Basic \
-    --admin-enabled true
+git clone https://github.com/seu-usuario/Challenge-Cloud-Devops.git
+cd Challenge-Cloud-Devops/scripts-azure
+chmod +x *.sh
 
 ```
 
-### Passo 3: Configuração da Storage Account para Persistência do Oracle
+### 2. Provisionamento da Infraestrutura Base
 
+Ainda no Cloud Shell, execute os scripts de infraestrutura na seguinte ordem. Aguarde a finalização de cada script antes de iniciar o próximo:
+
+* **Criar a Máquina Virtual (VM) e o Grupo de Recursos:**
 ```bash
-#!/bin/bash
-rm="565206"
-RESOURCE_GROUP="rg-aegis-app"
-LOCATION="canadacentral"
-STORAGE_ACCOUNT="volumeaegisdata$rm"
-FILE_SHARE="oracle-aegis-volume"
-
-az provider register --namespace Microsoft.Storage
-
-if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
-  az storage account create --resource-group "$RESOURCE_GROUP" \
-    --name "$STORAGE_ACCOUNT" \
-    --location "$LOCATION" \
-    --sku Standard_LRS
-fi
-
-connection_string=$(az storage account show-connection-string --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --query connectionString --output tsv)
-
-if ! az storage share exists --name "$FILE_SHARE" --account-name "$STORAGE_ACCOUNT" --connection-string "$connection_string" | grep -q true; then
-  az storage share create --name "$FILE_SHARE" --account-name "$STORAGE_ACCOUNT" --connection-string "$connection_string"
-fi
+./01_azure_vm_conteiners.sh
 
 ```
 
-### Passo 4: Configuração do Key Vault
 
+* **Criar o Azure Container Registry (ACR):**
 ```bash
-#!/bin/bash
-rm="565206"
-resourceGroup="rg-aegis-app"
-location="canadacentral"
-
-ORACLE_PASSWORD="200806"
-CONNECTIONSTRINGS='Data Source=oracle-dimdim:1521/XE;User Id=rm565206;Password=200806;'
-
-acrName="aegisrm$rm"
-keyVaultName="keyvault-aegis-$rm"
-
-az provider register --namespace Microsoft.KeyVault
-
-if ! az keyvault show --name "$keyVaultName" --resource-group "$resourceGroup" &> /dev/null; then
-  az keyvault create --name "$keyVaultName" --resource-group "$resourceGroup" --location "$location"
-fi
-
-az role assignment create \
-  --assignee "$(az account show --query user.name -o tsv)" \
-  --role "Key Vault Administrator" \
-  --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$resourceGroup/providers/Microsoft.KeyVault/vaults/$keyVaultName"
-
-sleep 15
-
-ACRUSERNAME=$(az acr credential show --name "$acrName" --resource-group "$resourceGroup" --query username --output tsv)
-ACRPASSWORD=$(az acr credential show --name "$acrName" --resource-group "$resourceGroup" --query passwords[0].value --output tsv)
-
-az keyvault secret set --vault-name "$keyVaultName" --name "oracle-password" --value "$ORACLE_PASSWORD"
-az keyvault secret set --vault-name "$keyVaultName" --name "connection-strings" --value "$CONNECTIONSTRINGS"
-az keyvault secret set --vault-name "$keyVaultName" --name "acr-username" --value "$ACRUSERNAME"
-az keyvault secret set --vault-name "$keyVaultName" --name "acr-password" --value "$ACRPASSWORD"
+./01_5_create_acr.sh
 
 ```
 
-### Passo 5: Build e Push da Imagem .NET para o ACR
 
-Na raiz do projeto onde se encontra o `Dockerfile`:
-
+* **Criar a Storage Account (Persistência do Banco):**
 ```bash
-az acr login --name aegisrm565206
-
-docker build -t aegisrm565206.azurecr.io/rm565206-api:v1 .
-
-docker push aegisrm565206.azurecr.io/rm565206-api:v1
+./02_storage_account.sh
 
 ```
 
-### Passo 6: Deploy do Banco Oracle no ACI (Com Persistência)
 
+* **Criar o Key Vault e armazenar segredos:**
 ```bash
-#!/bin/bash
-rm="565206"
-resourceGroup="rg-aegis-app"
-acrName="aegisrm$rm"
-aciName="oracle-dimdim"
-storageAccountName="volumeaegisdata$rm"
-file_share_name="oracle-aegis-volume"
-storage_key=$(az storage account keys list --resource-group "$resourceGroup" --account-name "$storageAccountName" --query "[0].value" --output tsv)
-keyVaultName="keyvault-aegis-$rm"
-
-az provider register --namespace Microsoft.ContainerInstance
-
-az container create \
-  --resource-group "$resourceGroup" \
-  --name "$aciName" \
-  --image "container-registry.oracle.com/database/express:latest" \
-  --ip-address Public \
-  --cpu 1 \
-  --memory 2 \
-  --os-type Linux \
-  --dns-name-label "oracle-container-$rm" \
-  --ports 1521 \
-  --azure-file-volume-account-name "$storageAccountName" \
-  --azure-file-volume-account-key "$storage_key" \
-  --azure-file-volume-share-name "$file_share_name" \
-  --azure-file-volume-mount-path "/opt/oracle/oradata" \
-  --environment-variables \
-    ORACLE_PWD="$(az keyvault secret show --vault-name "$keyVaultName" --name "oracle-password" --query value -o tsv)" \
-  --restart-policy Always
+./03_key_vault.sh
 
 ```
 
-### Passo 7: Deploy da Aplicação .NET no ACI (Non-Root)
 
+
+### 3. Build e Push da Imagem (Dentro da VM)
+
+Como o Cloud Shell não possui o motor do Docker instalado, utilizaremos a Máquina Virtual recém-criada (que já possui o Docker instalado pelo script 1) para compilar a imagem da nossa API de forma isolada na nuvem.
+
+* **Descubra o IP Público da VM** executando no Cloud Shell:
 ```bash
-#!/bin/bash
-rm="565206"
-resourceGroup="rg-aegis-app"
-acrName="aegisrm$rm"
-aciName="api-dotnet"
-aciNameOracle="oracle-dimdim"
-imageName="rm565206-api"
-tag="v1"
-keyVaultName="keyvault-aegis-$rm"
-
-oraclePublicIP=$(az container show --resource-group "$resourceGroup" --name "$aciNameOracle" --query ipAddress.ip --output tsv)
-
-az provider register --namespace Microsoft.ContainerInstance
-
-az container create \
-  --resource-group "$resourceGroup" \
-  --name "$aciName" \
-  --image "$acrName.azurecr.io/$imageName:$tag" \
-  --cpu 1 \
-  --memory 1.5 \
-  --os-type Linux \
-  --dns-name-label "api-dotnet-container-$rm" \
-  --ports 8080 \
-  --registry-login-server "$acrName.azurecr.io" \
-  --registry-username "$(az keyvault secret show --vault-name "$keyVaultName" --name "acr-username" --query value -o tsv)" \
-  --registry-password "$(az keyvault secret show --vault-name "$keyVaultName" --name "acr-password" --query value -o tsv)" \
-  --environment-variables \
-    ConnectionStrings__DefaultConnection="$(az keyvault secret show --name "connection-strings" --vault-name "$keyVaultName" --query value -o tsv | sed "s/oracle-dimdim/$oraclePublicIP/")" \
-    ASPNETCORE_ENVIRONMENT="Development" \
-    ASPNETCORE_URLS="http://+:8080" \
-  --restart-policy Always
+az vm show -d -g rm565206-infra -n rm565206-deploy --query publicIps -o tsv
 
 ```
 
----
 
-## 6. Dockerfile Seguro (Non-Root)
-
-O arquivo `Dockerfile` abaixo emprega compilação multi-estágio e assegura o cumprimento da regra de segurança, rodando sob um usuário não privilegiado (`app`):
-
-```dockerfile
-# Estágio de Build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
-COPY ["SistemaVeterinario.API/SistemaVeterinario.API.csproj", "SistemaVeterinario.API/"]
-RUN dotnet restore "SistemaVeterinario.API/SistemaVeterinario.API.csproj"
-COPY . .
-WORKDIR "/src/SistemaVeterinario.API"
-RUN dotnet publish -c Release -o /app/publish
-
-# Estágio de Runtime (Execução Segura)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
-WORKDIR /app
-COPY --from=build /app/publish .
-
-# REQUISITO DE SEGURANÇA: Executa a aplicação como non-root (usuário padrão 'app' do ASP.NET)
-USER app
-
-EXPOSE 8080
-ENTRYPOINT ["dotnet", "SistemaVeterinario.API.dll"]
+* **Acesse a VM via SSH:**
+```bash
+ssh admlnx@<COLE_O_IP_AQUI>
 
 ```
 
----
 
-## 7. Banco de Dados: DDL das Tabelas (Core da Aplicação)
+> **Nota:** A senha é senha padrão utilizada nas aulas `. O terminal não exibirá os caracteres enquanto você digita.
 
-Abaixo estão os scripts DDL referentes às tabelas principais do sistema veterinário (`T_VET_TUTOR` e `T_VET_PET`), criadas para suportar o CRUD completo com persistência garantida.
 
+* **Dentro da VM**, assuma as permissões do Docker, clone o projeto e faça o deploy da imagem:
+```bash
+# Recarrega o usuário para aplicar permissões do Docker
+su - admlnx
+
+# Clone o repositório na VM
+git clone https://github.com/seu-usuario/Challenge-Cloud-Devops.git
+cd Challenge-Cloud-Devops/sistema-veterinario-dotnet
+
+# Faça login no ACR (a senha está no portal Azure > ACR > Chaves de Acesso)
+sudo docker login aegisrm565206.azurecr.io -u aegisrm565206
+
+# Crie a imagem da API (Build)
+sudo docker build -t aegisrm565206.azurecr.io/rm565206-api:v1 .
+
+# Envie a imagem para o repositório em nuvem (Push)
+sudo docker push aegisrm565206.azurecr.io/rm565206-api:v1
+
+```
+
+
+* **Saia da Máquina Virtual** para retornar ao orquestrador (Cloud Shell):
+```bash
+exit
+exit
+
+```
+
+
+
+### 4. Deploy dos Containers (ACI)
+
+Agora você está de volta ao Azure Cloud Shell. Navegue novamente para a pasta de scripts e suba os serviços que consumirão a imagem e o banco de dados.
+
+* **Navegue para a pasta correta:**
+```bash
+cd ~/Challenge-Cloud-Devops/scripts-azure
+
+```
+
+
+* **Suba o Banco de Dados (Oracle) com persistência:**
+```bash
+./04_deploy_oracle_aci.sh
+
+```
+
+
+* **Suba a API (.NET) conectada ao banco e ao Key Vault:**
+```bash
+./05_deploy_api_aci.sh
+
+```
+
+
+
+### 5. Validação e Testes
+
+Para confirmar que tudo está funcionando e realizar as operações CRUD exigidas:
+
+1. **Testes na API:**
+* No portal da Azure, vá em **Container Instances** e clique no recurso `api-dotnet`.
+* Copie o **Endereço IP / FQDN** público fornecido na visão geral.
+* Acesse `http://<IP_DA_API>:8080/swagger`.
+* Teste a inserção de dados utilizando os modelos que estão disponíveis no arquivo `testes.json` na pasta `docs` do nosso repositório.
+
+
+2. **Testes no Banco de Dados (Oracle):**
+* Acesse o terminal do banco de dados executando o seguinte comando no Cloud Shell:
+```bash
+az container exec --resource-group rg-aegis-app --name oracle-dimdim --exec-command "sqlplus system/200806@//localhost:1521/XE"
+
+```
+
+
+* Dentro do banco, faça o `SELECT` para validar os dados recém-inseridos via API:
 ```sql
--- DDL da Tabela de Tutores (Core 1)
-CREATE TABLE T_VET_TUTOR (
-    id_tutor NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-    nm_tutor VARCHAR2(100) NOT NULL,
-    ds_email VARCHAR2(100) UNIQUE NOT NULL,
-    nr_telefone VARCHAR2(20) NOT NULL,
-    dt_cadastro DATE DEFAULT SYSDATE
-);
-
--- DDL da Tabela de Pets (Core 2)
-CREATE TABLE T_VET_PET (
-    id_pet NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-    id_tutor NUMBER NOT NULL,
-    nm_pet VARCHAR2(50) NOT NULL,
-    ds_especie VARCHAR2(50) NOT NULL,
-    ds_raca VARCHAR2(50),
-    nr_idade NUMBER(3),
-    CONSTRAINT fk_tutor_pet FOREIGN KEY (id_tutor) REFERENCES T_VET_TUTOR(id_tutor)
-);
-
-```
-
-### Inserção de Dados Significativos (Manipulação de Linhas)
-
-```sql
--- Inserção de Tutores
-INSERT INTO T_VET_TUTOR (nm_tutor, ds_email, nr_telefone) 
-VALUES ('Carlos Eduardo Silva', 'carlos.silva@email.com', '(11) 98765-4321');
-
-INSERT INTO T_VET_TUTOR (nm_tutor, ds_email, nr_telefone) 
-VALUES ('Mariana Souza Lima', 'mariana.lima@email.com', '(11) 91234-5678');
-
--- Inserção de Pets vinculados aos Tutores
-INSERT INTO T_VET_PET (id_tutor, nm_pet, ds_especie, ds_raca, nr_idade) 
-VALUES (1, 'Mel', 'Canino', 'Golden Retriever', 3);
-
-INSERT INTO T_VET_PET (id_tutor, nm_pet, ds_especie, ds_raca, nr_idade) 
-VALUES (2, 'Thor', 'Felino', 'Persa', 2);
-
-COMMIT;
+SELECT * FROM TB_VETERINARIO;
+SELECT * FROM TB_PET;
 
 ```
