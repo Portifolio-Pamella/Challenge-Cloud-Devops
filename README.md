@@ -1,11 +1,3 @@
-A adição desse script foi uma excelente sacada! O arquivo `03_5_build_e_push_vm.sh` usa o recurso **Azure Run Command**, o que significa que ele injeta os comandos direto na Máquina Virtual pela nuvem.
-
-Com isso, **você não precisa mais daquela etapa manual de acessar a VM via SSH**, digitar a senha, clonar e fazer o build na mão. O script faz tudo isso sozinho de forma automatizada.
-
-Abaixo está o seu `README.md` completamente atualizado. Aproveitei para substituir os links genéricos (`seu-usuario`) pelo link correto do seu repositório (`Portifolio-Pamella`), assim quem for testar o seu projeto só precisa copiar e colar.
-
-Aqui está o código completo para você substituir no seu arquivo `README.md`:
-
 ```markdown
 # Sistema Veterinário | DevOps Tools & Cloud Computing
 
