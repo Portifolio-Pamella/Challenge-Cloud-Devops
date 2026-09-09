@@ -13,43 +13,109 @@
 
 O **Sistema Veterinário Aegis** é uma plataforma moderna desenvolvida em arquitetura limpa (Clean Architecture) com **.NET 8.0 na API** e **Oracle Database** para persistência de dados. A solução foi projetada para otimizar a gestão de clínicas e hospitais veterinários, centralizando o controle de cadastros de pacientes, tutores, prontuários médicos, agendamentos de consultas e histórico de tratamentos.
 
-Para garantir alta disponibilidade, escalabilidade e conformidade com as melhores práticas de engenharia de software e computação em nuvem, a aplicação adota uma abordagem conteinerizada utilizando **Docker**, orquestrada e hospedada nativamente na **Microsoft Azure** com serviços gerenciados.
+A aplicação adota uma abordagem conteinerizada utilizando **Docker**, orquestrada e hospedada nativamente na **Microsoft Azure**.
 
 ---
 
-## 2. Descrição dos Benefícios para o Negócio
+## 2. Benefícios para o Negócio
 
-A adoção desta arquitetura baseada em nuvem traz impactos diretos e mensuráveis para a operação do negócio veterinário e para a maturidade técnica da engenharia:
-
-* **Resiliência e Escalabilidade Dinâmica:** Com o uso do **Azure Container Instances (ACI)** e do **Azure Container Registry (ACR)**, a API pode ser escalada instantaneamente conforme a demanda de acessos dos tutores e veterinários, sem a necessidade de gerenciar servidores físicos dedicados.
-* **Isolamento de Carga Crítica:** O banco de dados Oracle XE possui demandas específicas e robustas de hardware. Isolá-lo em uma instância de container dedicada com volume persistente (**Azure Files / Storage Account**) garante que picos de processamento na API não afetem a integridade ou a performance das transações financeiras e médicas.
-* **Segurança da Informação e Conformidade (Non-Root):** A aplicação .NET foi empacotada em uma imagem Docker utilizando uma estratégia multi-estágio que executa o processo sob um usuário restrito (**non-root** / usuário `app`). Isso mitiga vetores de invasão por escalação de privilégios no host, protegendo dados sensíveis de animais e tutores em conformidade com a LGPD.
-* **Gestão Centralizada de Segredos:** A utilização do **Azure Key Vault** elimina o armazenamento de credenciais, strings de conexão e senhas de banco de dados em texto plano no código-fonte ou em arquivos de configuração locais.
-* **Agilidade no Deploy (CI/CD Ready):** A automação via Azure CLI padroniza os ambientes de homologação e produção, reduzindo a zero o risco de falhas humanas durante o provisionamento de infraestrutura.
+* **Resiliência e Escalabilidade Dinâmica:** Uso do **Azure Container Instances (ACI)** e **Azure Container Registry (ACR)**, permitindo escalar a API instantaneamente.
+* **Isolamento de Carga Crítica:** O banco Oracle XE é isolado com volume persistente (**Azure Files / Storage Account**), garantindo integridade das transações.
+* **Segurança da Informação (Non-Root):** Aplicação .NET empacotada executando sob um usuário restrito, em conformidade com as melhores práticas de segurança.
+* **Gestão Centralizada de Segredos:** O **Azure Key Vault** elimina o armazenamento de credenciais e senhas em texto plano no código-fonte.
 
 ---
 
-## 3. Arquitetura da Solução e Fluxo de Funcionamento
-
-Abaixo está o desenho da arquitetura proposta para o Sistema Veterinário Aegis, demonstrando o fluxo de implantação via Azure CLI e a comunicação entre os recursos na nuvem.
+## 3. Arquitetura da Solução
 
 ![Arquitetura da Solução Aegis](docs/ArquiteturaSprint3.jpg)
 
-### Explicação do Fluxo:
-1. **Provisionamento Automatizado:** Todos os recursos são estritamente gerados por scripts acoplados à **Azure CLI**, garantindo rastreabilidade e infraestrutura como código (IaC).
-2. **Registro de Imagens:** O código fonte da API .NET é compilado e enviado para o **ACR (`aegisrm565206`)**.
-3. **Persistência do Banco:** O banco de dados **Oracle XE** roda em um ACI dedicado (`oracle-dimdim`), mapeando seu diretório de dados (`/opt/oracle/oradata`) diretamente para um File Share em nuvem (**Storage Account**). Mesmo se o container cair, os dados do sistema veterinário permanecem intactos.
-4. **Segurança de Conexão:** A API .NET é instanciada em outro ACI (`api-dotnet`) configurado para buscar dinamicamente as strings de acesso e credenciais protegidas no **Azure Key Vault**.
+**Fluxo:**
+1. A infraestrutura é criada via Azure CLI (Cloud Shell).
+2. O código é compilado em imagens Docker (API e Banco) e enviado ao **ACR**.
+3. O **Key Vault** guarda as senhas e as entrega com segurança.
+4. O banco Oracle roda em um **ACI** conectado a um **Storage Account** para não perder dados.
+5. A API .NET roda em outro **ACI** conectado ao banco de dados.
 
 ---
 
-## 4. Pré-requisitos e Configuração Inicial
+## 4. GUIA PASSO A PASSO ("HOW TO" COMPLETO)
 
-* Conta ativa na Microsoft Azure com permissões para criar Grupos de Recursos.
-* [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) instalado localmente ou utilização direta do **Azure Cloud Shell**.
-* Git instalado para clonar o repositório.
+Siga este passo a passo atentamente. Preste muita atenção aos avisos de **onde** você deve digitar os comandos.
 
-**Clone obrigatório do repositório para iniciar os testes:**
+### FASE 1: O Início no Cloud Shell (A tela do navegador)
+> **ONDE ESTOU?** 👉 No portal do Azure, clique no ícone `>_` (Cloud Shell) no topo da tela. Escolha a opção "Bash".
+
+**Passo 1:** Garanta que você está logado na conta certa da Azure:
+```bash
+az account show
+
+```
+
+*(Se der erro ou não mostrar seus dados, digite `az login` e siga os passos na tela).*
+
+**Passo 2:** Baixe o seu projeto para dentro do Cloud Shell:
+
+```bash
+cd ~
+git clone [https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git](https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git)
+cd Challenge-Cloud-Devops/scripts-azure
+chmod +x *.sh
+
+```
+
+**Passo 3:** Execute os scripts de infraestrutura, um por um. Espere um terminar para rodar o próximo:
+
+```bash
+./01_azure_vm_conteiners.sh
+./01_2_configurar_vm.sh
+./01_5_create_acr.sh
+./02_storage_account.sh
+./03_key_vault.sh
+
+```
+
+---
+
+### FASE 2: Preparando para entrar na Máquina Virtual
+
+> **ONDE ESTOU?** 👉 Ainda no Cloud Shell! Não entre na VM ainda.
+
+Antes de entrarmos na Máquina Virtual, precisamos de **duas coisas anotadas num Bloco de Notas** no seu computador:
+
+**1. O IP da sua Máquina Virtual:**
+Rode este comando para descobrir qual é o IP dela e copie o número que aparecer:
+
+```bash
+az vm show -d -g rm565206-infra -n rm565206-deploy --query publicIps -o tsv
+
+```
+
+**2. A Senha do Docker (ACR):**
+Rode este comando para revelar a senha do seu cofre de imagens. Copie esse código gigante que vai aparecer:
+
+```bash
+az acr credential show -n aegisrm565206 --query "passwords[0].value" -o tsv
+
+```
+
+---
+
+### FASE 3: O Build dentro da Máquina Virtual
+
+> **ONDE ESTOU?** 👉 Agora vamos "entrar" na VM. No Cloud Shell, digite o comando abaixo usando o IP que você anotou:
+
+**Passo 1: Entrar na VM**
+
+```bash
+ssh admlnx@<COLE_O_IP_AQUI>
+
+```
+
+*(Ele vai pedir a senha. Digite a senha padrão da faculdade que você configurou na criação. Lembre-se: nada aparece na tela enquanto você digita).*
+
+**Passo 2: Baixar o código DENTRO da VM**
+Quando o terminal mudar de nome para `[admlnx@rm565206-deploy]`, digite:
 
 ```bash
 git clone [https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git](https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git)
@@ -57,136 +123,73 @@ cd Challenge-Cloud-Devops/sistema-veterinario-dotnet
 
 ```
 
+*(Dica: Se ele pedir senha do GitHub no clone, use aquele **Token (PAT)** que você gerou no site do GitHub, e não a senha da sua conta).*
+
+**Passo 3: Fazer o Login no Docker**
+Agora, faça o login usando aquela senha gigante do ACR que você anotou no Bloco de Notas:
+
+```bash
+sudo docker login aegisrm565206.azurecr.io -u aegisrm565206
+
+```
+
+*(Cole a senha gigante e dê Enter).*
+
+**Passo 4: Criar e Enviar a imagem da API**
+
+```bash
+sudo docker build -t aegisrm565206.azurecr.io/rm565206-api:v1 .
+sudo docker push aegisrm565206.azurecr.io/rm565206-api:v1
+
+```
+
+**Passo 5: Criar e Enviar a imagem do Banco de Dados Oracle**
+
+```bash
+sudo docker build -f Dockerfile-db -t aegisrm565206.azurecr.io/rm565206-db:v1 .
+sudo docker push aegisrm565206.azurecr.io/rm565206-db:v1
+
+```
+
+**Passo 6: SAIR da Máquina Virtual**
+Acabamos o trabalho aqui dentro. Vamos voltar para o Cloud Shell:
+
+```bash
+exit
+
+```
+
 ---
 
-## Guia de Deploy e Execução na Nuvem (How To)
+### FASE 4: O Deploy Final (Voltando pro Cloud Shell)
 
-Este guia descreve os passos exatos para provisionar a infraestrutura e realizar o deploy da aplicação utilizando 100% dos recursos da Microsoft Azure, sem dependências locais.
+> **ONDE ESTOU?** 👉 Você digitou `exit`, então voltou para o Cloud Shell inicial.
 
-### 1. Preparação do Ambiente (Azure Cloud Shell)
-
-Todo o processo de orquestração será feito a partir do Azure Cloud Shell para garantir um ambiente padronizado com o Azure CLI já autenticado.
-
-1. Acesse o **Portal da Azure** e faça login.
-2. Na barra superior de navegação, clique no ícone **`>_`** para abrir o **Cloud Shell**.
-3. Certifique-se de que o terminal está configurado para **Bash** (no canto superior esquerdo da janela do terminal).
-4. Clone este repositório para o ambiente do Cloud Shell e entre na pasta dos scripts:
+**Passo 1:** Volte para a pasta dos seus scripts:
 
 ```bash
-git clone [https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git](https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git)
-cd Challenge-Cloud-Devops/scripts-azure
-chmod +x *.sh
+cd ~/Challenge-Cloud-Devops/scripts-azure
 
 ```
 
-### 2. Provisionamento da Infraestrutura Base
-
-Ainda no Cloud Shell, execute os scripts de infraestrutura na seguinte ordem. Aguarde a finalização de cada script antes de iniciar o próximo:
-
-* **Criar a Máquina Virtual (VM) e o Grupo de Recursos:**
-
-```bash
-./01_azure_vm_conteiners.sh
-
-```
-
-* **Configurar dependências na VM:**
-
-```bash
-./01_2_configurar_vm.sh
-
-```
-
-* **Criar o Azure Container Registry (ACR):**
-
-```bash
-./01_5_create_acr.sh
-
-```
-
-* **Criar a Storage Account (Persistência do Banco):**
-
-```bash
-./02_storage_account.sh
-
-```
-
-* **Criar o Key Vault e armazenar segredos:**
-
-```bash
-./03_key_vault.sh
-
-```
-
-### 3. Build e Push da Imagem Automatizado (Via Nuvem)
-
-Graças à automação utilizando o `Run Command`, não é necessário acessar a Máquina Virtual manualmente via SSH. O script a seguir envia as instruções remotamente para a VM instalar as ferramentas, autenticar no ACR, gerar a imagem Docker da API e enviá-la para a nuvem.
-
-* **Inicie o processo de Build e Push remotamente:**
-
-```bash
-./03_5_build_e_push_vm.sh
-
-```
-
-*(Aguarde o processo finalizar. Pode levar alguns minutos até a confirmação de sucesso aparecer na tela do Cloud Shell).*
-
-### 4. Deploy dos Containers (ACI)
-
-Com a imagem pronta no ACR, suba os serviços finais que irão compor o sistema:
-
-* **Suba o Banco de Dados (Oracle) com persistência:**
+**Passo 2:** Rode o script que cria o Container do Banco de Dados:
 
 ```bash
 ./04_deploy_oracle_aci.sh
 
 ```
 
-* **Suba a API (.NET) conectada ao banco e ao Key Vault:**
+**Passo 3:** Rode o script que cria o Container da API (já se conectando ao banco):
 
 ```bash
 ./05_deploy_api_aci.sh
 
 ```
 
-### 5. Validação e Testes
-
-Para confirmar que tudo está funcionando e realizar as operações CRUD exigidas:
-
-1. **Testes na API:**
-* No portal da Azure, vá em **Container Instances** e clique no recurso `api-dotnet`.
-* Copie o **Endereço IP / FQDN** público fornecido na visão geral.
-* Acesse `http://<IP_DA_API>:8080/swagger`.
-* Teste a inserção de dados utilizando os modelos que estão disponíveis no arquivo `testes.json` na pasta `docs` do nosso repositório.
-
-
-2. **Testes no Banco de Dados (Oracle):**
-* Acesse o terminal do banco de dados executando o seguinte comando no Cloud Shell:
-
-
-```bash
-az container exec --resource-group rg-aegis-app --name oracle-dimdim --exec-command "sqlplus system/200806@//localhost:1521/XE"
+🎉 **SUCESSO!** O terminal mostrará o link HTTP da sua API no final. É só clicar e testar!
 
 ```
 
-
-* Dentro do banco, faça o `SELECT` para validar os dados recém-inseridos via API:
-
-
-```sql
-SELECT * FROM TB_VETERINARIO;
-SELECT * FROM TB_PET;
-
-```
-
-
-
-```
-
-### Um detalhe importante antes de você rodar:
-Dentro do próprio arquivo `03_5_build_e_push_vm.sh` que você tem, lembre-se de alterar a variável `REPO_URL` para o link real do seu repositório, caso contrário a automação vai tentar baixar de um repositório que não existe.
-
-A variável dentro do script `.sh` deve ficar assim:
-`REPO_URL="[https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git](https://github.com/Portifolio-Pamella/Challenge-Cloud-Devops.git)"`
+Com essa estrutura, qualquer pessoa (especialmente os professores avaliadores) vai saber com clareza cristalina quando usar o ambiente Azure, quando entrar na VM, quando sair dela e quais senhas devem ser copiadas previamente!
 
 ```
