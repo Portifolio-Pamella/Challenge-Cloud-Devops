@@ -1,5 +1,6 @@
+
 # Estágio de Build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # 1. Copia absolutamente todas as pastas do projeto (API, Domain, Infrastructure, etc)
@@ -12,7 +13,7 @@ RUN dotnet restore "SistemaVeterinario.API/SistemaVeterinario.API.csproj"
 RUN dotnet publish "SistemaVeterinario.API/SistemaVeterinario.API.csproj" -c Release -o /app/publish
 
 # Estágio de Runtime (Execução)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
@@ -20,3 +21,4 @@ COPY --from=build /app/publish .
 USER app
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "SistemaVeterinario.API.dll"]
+EOF
