@@ -6,7 +6,7 @@ aciName="api-dotnet"
 aciNameOracle="oracle-dimdim"
 imageName="rm565206-api"
 tag="v1"
-keyVaultName="keyvault-aegis-$rm"
+keyVaultName="keyvault-$rm"
 
 oraclePublicIP=$(az container show --resource-group "$resourceGroup" --name "$aciNameOracle" --query ipAddress.ip --output tsv)
 

@@ -6,7 +6,7 @@ aciName="oracle-dimdim"
 storageAccountName="volumeaegisdata$rm"
 file_share_name="oracle-aegis-volume"
 storage_key=$(az storage account keys list --resource-group "$resourceGroup" --account-name "$storageAccountName" --query "[0].value" --output tsv)
-keyVaultName="keyvault-aegis-$rm"
+keyVaultName="keyvault-$rm"
 
 az provider register --namespace Microsoft.ContainerInstance
 

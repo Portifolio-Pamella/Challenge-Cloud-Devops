@@ -98,7 +98,11 @@ Ainda no Cloud Shell, execute os scripts de infraestrutura na seguinte ordem. Ag
 ./01_azure_vm_conteiners.sh
 
 ```
+* **Configurar dependências na VM**
+```bash
+./01_2_configurar_vm.sh
 
+```
 
 * **Criar o Azure Container Registry (ACR):**
 ```bash
