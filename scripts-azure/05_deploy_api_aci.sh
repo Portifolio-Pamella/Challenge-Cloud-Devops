@@ -7,8 +7,7 @@ echo "===================================================="
 echo "Iniciando o Deploy da Arquitetura (Oracle DB + .NET API)"
 echo "===================================================="
 
-# Variaveis (Confirme se o nome do seu Resource Group está correto)
-RG_NAME="rg-challenge-devops" # Substitua pelo nome do seu Resource Group real
+RG_NAME="rg-aegis-app"
 ACR_NAME="aegisrm565206"
 DB_IMAGE="${ACR_NAME}.azurecr.io/rm565206-db:v1"
 API_IMAGE="${ACR_NAME}.azurecr.io/rm565206-api:v1"
@@ -24,20 +23,20 @@ az container create \
   --resource-group $RG_NAME \
   --name aci-oracle-db \
   --image $DB_IMAGE \
+  --os-type Linux \
   --registry-login-server ${ACR_NAME}.azurecr.io \
   --registry-username $ACR_NAME \
   --registry-password $ACR_PASS \
   --dns-name-label db-aegis565206 \
   --ports 1521 \
-  --cpu 1.5 --memory 2.0 \
+  --cpu 2 --memory 4 \
   --environment-variables ORACLE_PASSWORD=$ORACLE_PASS
 
 echo "3. Capturando a URL do Banco de Dados..."
 DB_FQDN=$(az container show -g $RG_NAME -n aci-oracle-db --query ipAddress.fqdn -o tsv)
 echo "Banco no ar em: $DB_FQDN"
 
-# Monta a Connection String. 
-# Nota: A imagem gvenzl/oracle-free usa 'FREEPDB1' como nome padrão do banco.
+# Monta a Connection String apontando para o Oracle interno
 CONN_STRING="Data Source=$DB_FQDN:1521/FREEPDB1;User Id=system;Password=$ORACLE_PASS;"
 
 echo "4. Subindo o Container da API e conectando ao Banco..."
@@ -45,12 +44,14 @@ az container create \
   --resource-group $RG_NAME \
   --name aci-dotnet-api \
   --image $API_IMAGE \
+  --os-type Linux \
   --registry-login-server ${ACR_NAME}.azurecr.io \
   --registry-username $ACR_NAME \
   --registry-password $ACR_PASS \
   --dns-name-label api-aegis565206 \
   --ports 8080 \
-  --environment-variables ConnectionStrings__DefaultConnection="$CONN_STRING"
+  --cpu 1 --memory 2 \
+  --environment-variables ConnectionStrings__OracleConnection="$CONN_STRING"
 
 echo "===================================================="
 API_FQDN=$(az container show -g $RG_NAME -n aci-dotnet-api --query ipAddress.fqdn -o tsv)

@@ -4,13 +4,14 @@
 
     ```json
 {
-  "nomeVeterinario": "Dra. Maria Teste",
-  "crmVeterinario": "CRM-12345",
-  "especialidadeVeterinario": "Felinos",
-  "telefoneVeterinario": "11999999999",
-  "emailVeterinario": "teste@email.com",
+  "idVeterinario": 3,
+  "nomeVeterinario": "Dr. Carlos Silva",
+  "crmVeterinario": "CRM-99999",
+  "especialidadeVeterinario": "Caninos",
+  "telefoneVeterinario": "11988887777",
+  "emailVeterinario": "carlos@email.com",
   "statusVeterinario": "Ativo",
-  "dataCadastroVeterinario": "2026-05-23T21:00:00"
+  "dataCadastroVeterinario": "2026-09-09T20:00:00"
 }
 
 ```
@@ -20,19 +21,18 @@
     ```json
 {
   "nomeTutor": "João Silva",
-  "cpfTutor": "123.456.789-00",
-  "telefoneTutor": "(11) 99999-8888",
-  "emailTutor": "joao.silva@email.com",
-  "cepTutor": "01001-000",
-  "ruaTutor": "Avenida Paulista",
-  "numeroTutor": "1000",
-  "complementoTutor": "Apto 52",
-  "bairroTutor": "Bela Vista",
+  "cpfTutor": "12345678900",
+  "telefoneTutor": "11988887777",
+  "emailTutor": "joao@email.com",
+  "cepTutor": "01001000",
+  "ruaTutor": "Rua das Flores",
+  "numeroTutor": "123",
+  "complementoTutor": "Apt 10",
+  "bairroTutor": "Centro",
   "cidadeTutor": "São Paulo",
   "estadoTutor": "SP",
-  "dataCadastroTutor": "2026-05-24T01:03:42.967Z"
+  "dataCadastroTutor": "2026-09-09T20:00:00"
 }
-
 ```
 
 ### Cadastro de Pet
@@ -42,14 +42,14 @@
         ```json
 {
   "idTutor": 1,
-  "nomePet": "Rex",
+  "nomePet": "Robinho",
   "especiePet": "Cachorro",
-  "racaPet": "Golden Retriever",
-  "sexoPet": "Macho",
-  "dataNascimentoPet": "2024-01-15T00:00:00Z",
-  "pesoPet": 25.5,
-  "corPet": "Dourado",
-  "dataCadastroPet": "2026-05-24T01:03:42.967Z"
+  "racaPet": "Vira-lata",
+  "sexoPet": "M",
+  "dataNascimentoPet": "2023-01-10T10:00:00",
+  "pesoPet": 15.5,
+  "corPet": "Branco",
+  "dataCadastroPet": "2026-09-09T20:15:00"
 }
 
 ```
